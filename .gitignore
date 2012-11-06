@@ -1,0 +1,14 @@
+.git
+*swp
+.DS_Store
+dist
+Setup.hs
+*.hi
+*.o
+demos
+data
+_cache/
+_site/
+build
+cabal-dev
+site
