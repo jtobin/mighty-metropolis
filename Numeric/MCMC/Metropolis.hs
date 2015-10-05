@@ -1,95 +1,89 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns #-}
 
-module Numeric.MCMC.Metropolis ( 
-          MarkovChain(..), Options(..)
-        , runChain
-        ) where
+module Numeric.MCMC.Metropolis (mcmc, metropolis) where
 
-import Control.Monad.Trans
-import Control.Monad.Reader
-import Control.Monad.Primitive
-import Control.Arrow 
-import System.Random.MWC
-import System.Random.MWC.Distributions
-import Data.List
-import Statistics.Distribution
-import Statistics.Distribution.Normal hiding (standard)
-import GHC.Float
+import Control.Monad (when)
+import Control.Monad.Primitive (PrimMonad, PrimState)
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.State.Strict (StateT, execStateT, get, put)
+import Data.Vector.Unboxed (Vector)
+import qualified Data.Vector.Unboxed as Vector (mapM, fromList)
+import GHC.Prim (RealWorld)
+import Pipes (Producer, yield, (>->), runEffect)
+import qualified Pipes.Prelude as Pipes (mapM_, take)
+import System.Random.MWC.Probability (Gen, Prob)
+import qualified System.Random.MWC.Probability as MWC
 
--- | State of the Markov chain.  Current parameter values are held in 'theta', 
---   while accepts counts the number of proposals accepted.
-data MarkovChain = MarkovChain { theta   :: [Double] 
-                               , accepts :: {-# UNPACK #-} !Int }
+-- | A transition operator.
+type Transition m = StateT Chain (Prob m) ()
 
--- | Options for the chain.  The target (expected to be a log density) and
---   a step size tuning parameter.
-data Options = Options { _target  :: [Double] -> Double
-                       , _eps     :: {-# UNPACK #-} !Double }
+-- | The @Chain@ type specifies the state of a Markov chain at any given
+--   iteration.
+data Chain = Chain {
+    chainTarget   :: Vector Double -> Double
+  , chainScore    :: !Double
+  , chainPosition :: !(Vector Double)
+  }
 
--- | A result with this type has a view of the chain options.
-type ViewsOptions = ReaderT Options
+instance Show Chain where
+  show Chain {..} = filter (`notElem` "fromList []") (show chainPosition)
 
--- | Display the current state. 
-instance Show MarkovChain where
-    show config = filter (`notElem` "[]") $ show (map double2Float (theta config))
+-- | Propose a state transition according to a Gaussian proposal distribution
+--   with the specified standard deviation.
+propose
+  :: PrimMonad m
+  => Double
+  -> Vector Double
+  -> Prob m (Vector Double)
+propose radial = Vector.mapM perturb where
+  perturb m = MWC.normal m radial
 
--- | Density function for an isotropic Gaussian.  The (identity) covariance 
---   matrix is multiplied by the scalar 'sig'.
-isoGauss :: [Double] -> [Double] -> Double -> Double
-isoGauss xs mu sig = foldl1' (*) (zipWith density nds xs)
-    where nds = map (`normalDistr` sig) mu
-{-# INLINE isoGauss #-}
+-- | A Metropolis transition operator.
+metropolis
+  :: PrimMonad m
+  => Double
+  -> Transition m
+metropolis radial = do
+  Chain {..} <- get
+  proposal <- lift (propose radial chainPosition)
+  let proposalScore = chainTarget proposal
+      acceptProb    = whenNaN 0 (exp (min 0 (proposalScore - chainScore)))
 
--- | Perturb the state, creating a new proposal.
-perturb :: PrimMonad m 
-        => [Double]                   -- Current state
-        -> Gen (PrimState m)          -- MWC PRNG
-        -> ViewsOptions m [Double]    -- Resulting perturbation.
-perturb t g = do
-    Options _ e  <- ask
-    mapM (\m -> lift $ normal m e g) t
-{-# INLINE perturb #-}
+  accept <- lift (MWC.bernoulli acceptProb)
+  when accept (put (Chain chainTarget proposalScore proposal))
 
--- | Perform a Metropolis accept/reject step.
-metropolisStep :: PrimMonad m 
-               => MarkovChain                -- Current state
-               -> Gen (PrimState m)          -- MWC PRNG 
-               -> ViewsOptions m MarkovChain -- New state
-metropolisStep state g = do
-    Options target e <- ask
-    let (t0, nacc) = (theta &&& accepts) state
-    zc           <- lift $ uniformR (0, 1) g
-    proposal     <- perturb t0 g
-    let mc = if   zc < acceptProb 
-             then (proposal, 1)
-             else (t0,       0)
+-- | A Markov chain.
+chain
+  :: PrimMonad m
+  => Double
+  -> Chain
+  -> Gen (PrimState m)
+  -> Producer Chain m ()
+chain radial = loop where
+  loop state prng = do
+    next <- lift (MWC.sample (execStateT (metropolis radial) state) prng)
+    yield next
+    loop next prng
 
-        acceptProb = if isNaN val then 0 else val where val = arRatio 
-        
-        arRatio = exp . min 0 $ 
-            target proposal + log (isoGauss t0 proposal e)
-          - target t0       - log (isoGauss proposal t0 e)
+-- | Trace 'n' iterations of a Markov chain.
+mcmc
+  :: Int
+  -> Double
+  -> [Double]
+  -> (Vector Double -> Double)
+  -> Gen RealWorld
+  -> IO ()
+mcmc n radial (Vector.fromList -> chainPosition) chainTarget gen = runEffect $
+        chain radial Chain {..} gen
+    >-> Pipes.take n
+    >-> Pipes.mapM_ print
+  where
+    chainScore = chainTarget chainPosition
 
-    return $! MarkovChain (fst mc) (nacc + snd mc)
-{-# INLINE metropolisStep #-}
-
--- | Diffuse through states.
-runChain :: Options         -- Options of the Markov chain.
-         -> Int             -- Number of epochs to iterate the chain.
-         -> Int             -- Print every nth iteration
-         -> MarkovChain     -- Initial state of the Markov chain.
-         -> Gen RealWorld   -- MWC PRNG
-         -> IO MarkovChain  -- End state of the Markov chain, wrapped in IO.
-runChain = go
-  where go o n t !c g | n == 0 = return c
-                      | n `rem` t /= 0 = do
-                            r <- runReaderT (metropolisStep c g) o
-                            go o (n - 1) t r g
-                      | otherwise = do
-                            r <- runReaderT (metropolisStep c g) o
-                            print r
-                            go o (n - 1) t r g
-{-# INLINE runChain #-}
-
-
+-- | Use a provided default value when the argument is NaN.
+whenNaN :: RealFloat a => a -> a -> a
+whenNaN val x
+  | isNaN x   = val
+  | otherwise = x

@@ -12,3 +12,6 @@ _site/
 build
 cabal-dev
 site
+debug
+.stack-work
+Examples
