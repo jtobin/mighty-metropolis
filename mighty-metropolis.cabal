@@ -2,7 +2,7 @@ name:                mighty-metropolis
 version:             0.2.0.0
 synopsis:            The Metropolis algorithm.
 homepage:            http://github.com/jtobin/mighty-metropolis
-license:             BSD3
+license:             MIT
 license-file:        LICENSE
 author:              Jared Tobin
 maintainer:          jared@jtobin.ca
