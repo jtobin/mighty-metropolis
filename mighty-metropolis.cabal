@@ -10,7 +10,19 @@ category:            Numeric
 build-type:          Simple
 cabal-version:       >= 1.10
 description:
-  The Metropolis algorithm.
+  The classic Metropolis algorithm.  Wander around parameter space according to a
+  simple spherical Gaussian distribution.
+  .
+  Exports a 'mcmc' function that prints a trace to stdout, as well as a
+  'metropolis' transition operator that can be used more generally.
+  .
+  > import Numeric.MCMC.Metropolis
+  >
+  > rosenbrock :: [Double] -> Double
+  > rosenbrock [x0, x1] = negate (5  *(x1 - x0 ^ 2) ^ 2 + 0.05 * (1 - x0) ^ 2)
+  >
+  > main :: IO ()
+  > main = withSystemRandom . asGenIO $ mcmc 10000 1 [0, 0] rosenbrock
 
 Source-repository head
   Type:     git
@@ -24,6 +36,7 @@ library
       Numeric.MCMC.Metropolis
   build-depends:
       base             < 5
+    , ghc-prim
     , pipes
     , primitive
     , mcmc-types       >= 1.0.1
