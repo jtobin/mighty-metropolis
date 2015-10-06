@@ -17,6 +17,7 @@ Source-repository head
   Location: http://github.com/jtobin/mighty-metropolis.git
 
 library
+  default-language:    Haskell2010
   ghc-options:
       -Wall
   exposed-modules:
