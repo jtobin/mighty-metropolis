@@ -1,11 +1,30 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE RecordWildCards #-}
 
+-- |
+-- Module: Numeric.MCMC.Metropolis
+-- Copyright: (c) 2015 Jared Tobin
+-- License: MIT
+--
+-- Maintainer: Jared Tobin <jared@jtobin.ca>
+-- Stability: unstable
+-- Portability: ghc
+--
+-- You have to wake up pretty early to beat the Metropolis algorithm.
+--
+-- This implementation uses spherical Gaussian proposals to implement a
+-- reliable and computationally inexpensive sampling routine.  It can be used
+-- as a baseline from which to benchmarks other algorithms on a given problem.
+--
+-- The 'mcmc' function streams a trace to stdout to be processed elsewhere,
+-- while the `metropolis` transition can be used for more flexible purposes,
+-- such as working with samples in memory.
+
 module Numeric.MCMC.Metropolis (
     mcmc
   , metropolis
 
-  -- * re-export
+  -- * re-exported
   , module Data.Sampling.Types
   , MWC.create
   , MWC.createSystemRandom
@@ -24,8 +43,8 @@ import qualified Pipes.Prelude as Pipes (mapM_, take)
 import System.Random.MWC.Probability (Gen, Prob)
 import qualified System.Random.MWC.Probability as MWC
 
--- | Propose a state transition according to a Gaussian proposal distribution
---   with the specified standard deviation.
+-- Propose a state transition according to a Gaussian proposal distribution
+-- with the specified standard deviation.
 propose
   :: (PrimMonad m, Traversable f)
   => Double
@@ -34,7 +53,7 @@ propose
 propose radial = traverse perturb where
   perturb m = MWC.normal m radial
 
--- | A Metropolis transition operator.
+-- | A generic Metropolis transition operator.
 metropolis
   :: (Traversable f, PrimMonad m)
   => Double
@@ -48,7 +67,7 @@ metropolis radial = do
   accept <- lift (MWC.bernoulli acceptProb)
   when accept (put (Chain chainTarget proposalScore proposal chainTunables))
 
--- | A Markov chain.
+-- A Markov chain driven by the Metropolis transition operator.
 chain
   :: (Traversable f, PrimMonad m)
   => Double
@@ -61,7 +80,13 @@ chain radial = loop where
     yield next
     loop next prng
 
--- | Trace 'n' iterations of a Markov chain.
+-- | Trace 'n' iterations of a Markov chain and stream them to stdout.
+--
+-- >>> let rosenbrock [x0, x1] = negate (5  *(x1 - x0 ^ 2) ^ 2 + 0.05 * (1 - x0) ^ 2)
+-- >>> withSystemRandom . asGenIO $ mcmc 3 1 [0, 0] rosenbrock
+-- 0.5000462419822702,0.5693944056267897
+-- 0.5000462419822702,0.5693944056267897
+-- -0.7525995304580824,1.2240725505283248
 mcmc
   :: (Traversable f, Show (f Double))
   => Int
@@ -79,7 +104,7 @@ mcmc n radial chainPosition target gen = runEffect $
     chainTunables = Nothing
     chainTarget   = Target target Nothing
 
--- | Use a provided default value when the argument is NaN.
+-- Use a provided default value when the argument is NaN.
 whenNaN :: RealFloat a => a -> a -> a
 whenNaN val x
   | isNaN x   = val

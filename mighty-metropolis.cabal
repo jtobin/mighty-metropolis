@@ -1,5 +1,5 @@
 name:                mighty-metropolis
-version:             0.2.0.0
+version:             1.0.0
 synopsis:            The Metropolis algorithm.
 homepage:            http://github.com/jtobin/mighty-metropolis
 license:             MIT
@@ -37,5 +37,6 @@ Test-suite rosenbrock
     -rtsopts -Wall
   build-depends:
       base
+    , containers
     , mwc-probability
 
