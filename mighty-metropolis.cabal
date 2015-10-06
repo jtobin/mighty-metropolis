@@ -53,8 +53,9 @@ Test-suite rosenbrock
   ghc-options:
     -rtsopts -Wall
   build-depends:
-      base            < 5
-    , mwc-probability >= 1.0.1
+      base              < 5
+    , mighty-metropolis
+    , mwc-probability   >= 1.0.1
 
 Test-suite bnn
   type:                exitcode-stdio-1.0
@@ -64,7 +65,8 @@ Test-suite bnn
   ghc-options:
     -rtsopts -Wall
   build-depends:
-      base            < 5
+      base              < 5
     , containers
-    , mwc-probability >= 1.0.1
+    , mighty-metropolis
+    , mwc-probability   >= 1.0.1
 
