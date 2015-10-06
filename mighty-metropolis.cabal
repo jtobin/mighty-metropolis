@@ -10,8 +10,10 @@ category:            Numeric
 build-type:          Simple
 cabal-version:       >= 1.10
 description:
-  The classic Metropolis algorithm.  Wander around parameter space according to a
-  simple spherical Gaussian distribution.
+  The classic Metropolis algorithm.
+  .
+  Wander around parameter space according to a simple spherical Gaussian
+  distribution.
   .
   Exports a 'mcmc' function that prints a trace to stdout, as well as a
   'metropolis' transition operator that can be used more generally.

@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- |
@@ -10,11 +11,9 @@
 -- Stability: unstable
 -- Portability: ghc
 --
--- You have to wake up pretty early to beat the Metropolis algorithm.
---
 -- This implementation uses spherical Gaussian proposals to implement a
 -- reliable and computationally inexpensive sampling routine.  It can be used
--- as a baseline from which to benchmarks other algorithms on a given problem.
+-- as a baseline from which to benchmark other algorithms for a given problem.
 --
 -- The 'mcmc' function streams a trace to stdout to be processed elsewhere,
 -- while the `metropolis` transition can be used for more flexible purposes,
@@ -24,7 +23,7 @@ module Numeric.MCMC.Metropolis (
     mcmc
   , metropolis
 
-  -- * re-exported
+  -- * Re-exported
   , module Data.Sampling.Types
   , MWC.create
   , MWC.createSystemRandom
@@ -37,6 +36,9 @@ import Control.Monad.Primitive (PrimMonad, PrimState)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (execStateT, get, put)
 import Data.Sampling.Types (Target(..), Chain(..), Transition)
+#if __GLASGOW_HASKELL__ < 710
+import Data.Traversable (Traversable, traverse)
+#endif
 import GHC.Prim (RealWorld)
 import Pipes (Producer, yield, (>->), runEffect)
 import qualified Pipes.Prelude as Pipes (mapM_, take)
