@@ -37,7 +37,7 @@ Test-suite rosenbrock
     -rtsopts -Wall
   build-depends:
       base            < 5
-    , mwc-probability
+    , mwc-probability >= 1.0.1
 
 Test-suite bnn
   type:                exitcode-stdio-1.0
