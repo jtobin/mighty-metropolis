@@ -6,7 +6,7 @@ simple spherical Gaussian distribution.
 Exports a `mcmc` function that prints a trace to stdout, as well as a
 `metropolis` transition operator that can be used more generally.
 
-See the *test* folder for example usage.
+See the *test* directory for example usage.
 
     import Numeric.MCMC.Metropolis
 
