@@ -22,7 +22,7 @@ library
   exposed-modules:
       Numeric.MCMC.Metropolis
   build-depends:
-      base
+      base             < 5
     , pipes
     , primitive
     , mcmc-types
@@ -36,7 +36,18 @@ Test-suite rosenbrock
   ghc-options:
     -rtsopts -Wall
   build-depends:
-      base
+      base            < 5
+    , mwc-probability
+
+Test-suite bnn
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             BNN.hs
+  default-language:    Haskell2010
+  ghc-options:
+    -rtsopts -Wall
+  build-depends:
+      base            < 5
     , containers
     , mwc-probability
 
