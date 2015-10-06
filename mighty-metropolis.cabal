@@ -27,6 +27,7 @@ library
     , primitive
     , mcmc-types       >= 1.0.1
     , mwc-probability  >= 1.0.1
+    , transformers
 
 Test-suite rosenbrock
   type:                exitcode-stdio-1.0
