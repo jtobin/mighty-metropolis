@@ -1,32 +1,28 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Numeric.MCMC.Metropolis (mcmc, metropolis) where
+module Numeric.MCMC.Metropolis (
+    mcmc
+  , metropolis
+
+  -- * re-export
+  , module Data.Sampling.Types
+  , MWC.create
+  , MWC.createSystemRandom
+  , MWC.withSystemRandom
+  , MWC.asGenIO
+  ) where
 
 import Control.Monad (when)
 import Control.Monad.Primitive (PrimMonad, PrimState)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.State.Strict (StateT, execStateT, get, put)
+import Control.Monad.Trans.State.Strict (execStateT, get, put)
+import Data.Sampling.Types (Target(..), Chain(..), Transition)
 import GHC.Prim (RealWorld)
 import Pipes (Producer, yield, (>->), runEffect)
 import qualified Pipes.Prelude as Pipes (mapM_, take)
 import System.Random.MWC.Probability (Gen, Prob)
 import qualified System.Random.MWC.Probability as MWC
-
--- | A transition operator.
-type Transition m a = StateT a (Prob m) ()
-
--- | The @Chain@ type specifies the state of a Markov chain at any given
---   iteration.
-data Chain a b = Chain {
-    chainTarget   :: a -> Double
-  , chainScore    :: !Double
-  , chainPosition :: a
-  , chainTunables :: Maybe b
-  }
-
-instance Show a => Show (Chain a b) where
-  show Chain {..} = filter (`notElem` "fromList []") (show chainPosition)
 
 -- | Propose a state transition according to a Gaussian proposal distribution
 --   with the specified standard deviation.
@@ -46,7 +42,7 @@ metropolis
 metropolis radial = do
   Chain {..} <- get
   proposal <- lift (propose radial chainPosition)
-  let proposalScore = chainTarget proposal
+  let proposalScore = lTarget chainTarget proposal
       acceptProb    = whenNaN 0 (exp (min 0 (proposalScore - chainScore)))
 
   accept <- lift (MWC.bernoulli acceptProb)
@@ -74,13 +70,14 @@ mcmc
   -> (f Double -> Double)
   -> Gen RealWorld
   -> IO ()
-mcmc n radial chainPosition chainTarget gen = runEffect $
+mcmc n radial chainPosition target gen = runEffect $
         chain radial Chain {..} gen
     >-> Pipes.take n
     >-> Pipes.mapM_ print
   where
-    chainScore    = chainTarget chainPosition
+    chainScore    = lTarget chainTarget chainPosition
     chainTunables = Nothing
+    chainTarget   = Target target Nothing
 
 -- | Use a provided default value when the argument is NaN.
 whenNaN :: RealFloat a => a -> a -> a

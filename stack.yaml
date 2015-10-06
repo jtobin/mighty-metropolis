@@ -1,5 +1,6 @@
 flags: {}
 packages:
   - ../mwc-probability
+  - ../mcmc-types
 extra-deps: []
 resolver: lts-3.3

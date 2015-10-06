@@ -25,8 +25,8 @@ library
       base
     , pipes
     , primitive
+    , mcmc-types
     , mwc-probability
-    , vector
 
 Test-suite rosenbrock
   type:                exitcode-stdio-1.0
@@ -38,5 +38,4 @@ Test-suite rosenbrock
   build-depends:
       base
     , mwc-probability
-    , vector
 
