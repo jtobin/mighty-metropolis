@@ -32,14 +32,13 @@ module Numeric.MCMC.Metropolis (
   ) where
 
 import Control.Monad (when)
-import Control.Monad.Primitive (PrimMonad, PrimState)
+import Control.Monad.Primitive (PrimMonad, PrimState, RealWorld)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (execStateT, get, put)
 import Data.Sampling.Types (Target(..), Chain(..), Transition)
 #if __GLASGOW_HASKELL__ < 710
 import Data.Traversable (Traversable, traverse)
 #endif
-import GHC.Prim (RealWorld)
 import Pipes (Producer, yield, (>->), runEffect)
 import qualified Pipes.Prelude as Pipes (mapM_, take)
 import System.Random.MWC.Probability (Gen, Prob)
