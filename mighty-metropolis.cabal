@@ -1,5 +1,5 @@
 name:                mighty-metropolis
-version:             1.0.1
+version:             1.0.2
 synopsis:            The Metropolis algorithm.
 homepage:            http://github.com/jtobin/mighty-metropolis
 license:             MIT
@@ -38,7 +38,7 @@ library
       Numeric.MCMC.Metropolis
   build-depends:
       base             < 5
-    , pipes
+    , pipes            >= 4 && < 5
     , primitive
     , mcmc-types       >= 1.0.1
     , mwc-probability  >= 1.0.1
