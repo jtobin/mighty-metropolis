@@ -2,6 +2,7 @@
 
 [![Build Status](https://secure.travis-ci.org/jtobin/mighty-metropolis.png)](http://travis-ci.org/jtobin/mighty-metropolis)
 [![Hackage Version](https://img.shields.io/hackage/v/mighty-metropolis.svg)](http://hackage.haskell.org/package/mighty-metropolis)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/jtobin/mighty-metropolis/blob/master/LICENSE)
 
 The classic Metropolis algorithm.  Wander around parameter space according to a
 simple spherical Gaussian distribution.
