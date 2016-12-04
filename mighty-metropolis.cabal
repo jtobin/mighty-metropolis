@@ -1,5 +1,5 @@
 name:                mighty-metropolis
-version:             1.0.3
+version:             1.0.4
 synopsis:            The Metropolis algorithm.
 homepage:            http://github.com/jtobin/mighty-metropolis
 license:             MIT
@@ -39,10 +39,10 @@ library
   build-depends:
       base             >= 4 && < 6
     , pipes            >= 4 && < 5
-    , primitive
+    , primitive        >= 0.6 && < 1.0
     , mcmc-types       >= 1.0.1
     , mwc-probability  >= 1.0.1
-    , transformers
+    , transformers     >= 0.5 && < 0.6
 
 Test-suite rosenbrock
   type:                exitcode-stdio-1.0
