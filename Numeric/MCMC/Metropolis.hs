@@ -32,9 +32,10 @@ module Numeric.MCMC.Metropolis (
   ) where
 
 import Control.Monad (when)
-import Control.Monad.Primitive (PrimMonad, PrimState, RealWorld)
+import Control.Monad.Primitive (PrimMonad, PrimState)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Strict (execStateT, get, put)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Sampling.Types (Target(..), Chain(..), Transition)
 #if __GLASGOW_HASKELL__ < 710
 import Data.Traversable (Traversable, traverse)
@@ -89,17 +90,17 @@ chain radial = loop where
 -- 0.5000462419822702,0.5693944056267897
 -- -0.7525995304580824,1.2240725505283248
 mcmc
-  :: (Traversable f, Show (f Double))
+  :: (MonadIO m, PrimMonad m, Traversable f, Show (f Double))
   => Int
   -> Double
   -> f Double
   -> (f Double -> Double)
-  -> Gen RealWorld
-  -> IO ()
+  -> Gen (PrimState m)
+  -> m ()
 mcmc n radial chainPosition target gen = runEffect $
         chain radial Chain {..} gen
     >-> Pipes.take n
-    >-> Pipes.mapM_ print
+    >-> Pipes.mapM_ (liftIO . print)
   where
     chainScore    = lTarget chainTarget chainPosition
     chainTunables = Nothing
