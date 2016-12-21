@@ -43,7 +43,7 @@ import Data.Sampling.Types (Target(..), Chain(..), Transition)
 import Data.Traversable (Traversable, traverse)
 #endif
 import Pipes (Producer, Consumer, yield, (>->), runEffect, await)
-import qualified Pipes.Prelude as Pipes (mapM_, take, map)
+import qualified Pipes.Prelude as Pipes (mapM_, take)
 import System.Random.MWC.Probability (Gen, Prob)
 import qualified System.Random.MWC.Probability as MWC
 
@@ -89,9 +89,9 @@ drive radial = loop where
 -- >>> let rosenbrock [x0, x1] = negate (5  *(x1 - x0 ^ 2) ^ 2 + 0.05 * (1 - x0) ^ 2)
 -- >>> results <- withSystemRandom . asGenIO $ chain 3 1 [0, 0] rosenbrock
 -- >>> mapM_ print results
--- [0.0,0.0]
--- [1.4754117657794871e-2,0.5033208261760778]
--- [3.8379699517007895e-3,0.24627131099479127]
+-- 0.0,0.0
+-- 1.4754117657794871e-2,0.5033208261760778
+-- 3.8379699517007895e-3,0.24627131099479127
 chain
   :: (PrimMonad m, Traversable f)
   => Int
@@ -99,10 +99,9 @@ chain
   -> f Double
   -> (f Double -> Double)
   -> Gen (PrimState m)
-  -> m [f Double]
+  -> m [Chain (f Double) b]
 chain n radial position target gen = runEffect $
         drive radial origin gen
-    >-> Pipes.map chainPosition
     >-> collect n
   where
     ctarget = Target target Nothing
