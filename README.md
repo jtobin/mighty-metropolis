@@ -7,8 +7,9 @@
 The classic Metropolis algorithm.  Wander around parameter space according to a
 simple spherical Gaussian distribution.
 
-Exports a `mcmc` function that prints a trace to stdout, as well as a
-`metropolis` transition operator that can be used more generally.
+Exports a `mcmc` function that prints a trace to stdout, a `chain` function for
+collecting results in memory, and a `metropolis` transition operator that can
+be used more generally.
 
 See the *test* directory for example usage.
 
