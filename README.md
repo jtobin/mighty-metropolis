@@ -21,4 +21,9 @@ See the *test* directory for example usage.
     main :: IO ()
     main = withSystemRandom . asGenIO $ mcmc 10000 1 [0, 0] rosenbrock
 
+*mighty-metropolis* is a member of the [declarative][decl] suite of MCMC
+libraries that are designed to work together seamlessly.
+
 ![trace](https://dl.dropboxusercontent.com/spa/u0s6617yxinm2ca/osecfv_w.png)
+
+[decl]: https://github.com/jtobin/declarative
