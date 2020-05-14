@@ -84,3 +84,5 @@ Test-suite tests
     , mighty-metropolis
     , mwc-probability   >= 1.0.1
     , hspec
+    , mwc-random
+    , mcmc-types
