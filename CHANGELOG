@@ -1,6 +1,7 @@
 # Changelog
 
 - 1.3.0 (2020-05-14)
+    * Add 'chain'' function to use 'chainTunables'
     * Add testing via 'hspec'.
 
 - 1.2.0 (2016-12-22)

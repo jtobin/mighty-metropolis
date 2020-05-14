@@ -87,7 +87,8 @@ drive radial tunable = loop where
     yield next
     loop next prng
 
--- | Return a list of @Chain@ values potentially with tunable values.
+-- | Return a list of @Chain@ values potentially with tunable values computed
+-- from each position.
 chain' ::
      (PrimMonad m, Traversable f)
   => Int
