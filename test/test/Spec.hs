@@ -1,6 +1,7 @@
 import Test.Hspec
 import Data.Sampling.Types
-import Numeric.MCMC.Metropolis (chain)
+import Data.Maybe (fromJust)
+import Numeric.MCMC.Metropolis (chain,chain')
 import System.Random.MWC
 
 withinPercent :: Double -> Double -> Double -> Bool
@@ -70,7 +71,7 @@ getChainResults =
 
 testChainResults :: [Double] -> SpecWith ()
 testChainResults xs =
-  describe "Testing chain on samples from exponential distribution with rate 1" $ do
+  describe "Testing samples from exponential distribution with rate 1" $ do
     it "test mean is estimated correctly" $ do
       mean xs < 1 + 2 * stdErr xs `shouldBe` True
       mean xs > 1 - 2 * stdErr xs `shouldBe` True
@@ -78,9 +79,33 @@ testChainResults xs =
       variance xs < 1 + 2 * stdErr [(x - 1) ** 2.0 | x <- xs] `shouldBe` True
       variance xs > 1 - 2 * stdErr [(x - 1) ** 2.0 | x <- xs] `shouldBe` True
 
+getTunableResults :: IO [Double]
+getTunableResults =
+  let numIters = 1000000
+      radialSize = 0.2
+      x0 = [1.0]
+      lnObj [x] =
+        if x > 0
+          then -x
+          else -1 / 0
+      tunable [x] = x ** 3.0
+      thinning = 1000
+   in do boxedXs <-
+           withSystemRandom . asGenIO $ chain' numIters radialSize x0 lnObj (Just tunable)
+         return $ thin thinning $ fromJust . chainTunables <$> boxedXs
+
+testTunableResults :: [Double] -> SpecWith ()
+testTunableResults ts =
+  describe "Testing third moment of exponential distribution with rate 1" $ do
+    it "test third moment (which is 6) is estimated correctly" $ do
+      mean ts < 6 + 2 * stdErr ts `shouldBe` True
+      mean ts > 6 - 2 * stdErr ts `shouldBe` True
+
 main :: IO ()
 main = do
   xs <- getChainResults
+  ts <- getTunableResults
   hspec $ do
     testHelperFunctions
     testChainResults xs
+    testTunableResults ts

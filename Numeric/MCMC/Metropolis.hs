@@ -22,6 +22,7 @@
 module Numeric.MCMC.Metropolis (
     mcmc
   , chain
+  , chain'
   , metropolis
 
   -- * Re-exported
@@ -61,28 +62,54 @@ propose radial = traverse perturb where
 metropolis
   :: (Traversable f, PrimMonad m)
   => Double
+  -> Maybe (f Double -> b)
   -> Transition m (Chain (f Double) b)
-metropolis radial = do
+metropolis radial tunable = do
   Chain {..} <- get
   proposal <- lift (propose radial chainPosition)
   let proposalScore = lTarget chainTarget proposal
       acceptProb    = whenNaN 0 (exp (min 0 (proposalScore - chainScore)))
 
   accept <- lift (MWC.bernoulli acceptProb)
-  when accept (put (Chain chainTarget proposalScore proposal chainTunables))
+  when accept (put (Chain chainTarget proposalScore proposal (tunable <*> Just proposal)))
 
 -- Drive a Markov chain via the Metropolis transition operator.
 drive
   :: (Traversable f, PrimMonad m)
   => Double
+  -> Maybe (f Double -> b)
   -> Chain (f Double) b
   -> Gen (PrimState m)
   -> Producer (Chain (f Double) b) m c
-drive radial = loop where
+drive radial tunable = loop where
   loop state prng = do
-    next <- lift (MWC.sample (execStateT (metropolis radial) state) prng)
+    next <- lift (MWC.sample (execStateT (metropolis radial tunable) state) prng)
     yield next
     loop next prng
+
+-- | Return a list of @Chain@ values potentially with tunable values.
+chain' ::
+     (PrimMonad m, Traversable f)
+  => Int
+  -> Double
+  -> f Double
+  -> (f Double -> Double)
+  -> Maybe (f Double -> b)
+  -> Gen (PrimState m)
+  -> m [Chain (f Double) b]
+chain' n radial position target tunable gen =
+  runEffect $ drive radial tunable origin gen >-> collect n
+  where
+    ctarget = Target target Nothing
+    origin =
+      Chain
+        { chainScore = lTarget ctarget position
+        , chainTunables = tunable <*> Just position
+        , chainTarget = ctarget
+        , chainPosition = position
+        }
+    collect :: Monad m => Int -> Consumer a m [a]
+    collect size = lowerCodensity $ replicateM size (lift Pipes.await)
 
 -- | Trace 'n' iterations of a Markov chain and collect the results in a list.
 --
@@ -94,28 +121,14 @@ drive radial = loop where
 -- 3.8379699517007895e-3,0.24627131099479127
 chain
   :: (PrimMonad m, Traversable f)
-  => Int
-  -> Double
-  -> f Double
-  -> (f Double -> Double)
+  => Int  -- ^ Number of iterations
+  -> Double  -- ^ Step standard deviation
+  -> f Double  -- ^ Starting position
+  -> (f Double -> Double) -- ^ The log-density (up to additive constant)
   -> Gen (PrimState m)
   -> m [Chain (f Double) b]
-chain n radial position target gen = runEffect $
-        drive radial origin gen
-    >-> collect n
-  where
-    ctarget = Target target Nothing
-
-    origin = Chain {
-        chainScore    = lTarget ctarget position
-      , chainTunables = Nothing
-      , chainTarget   = ctarget
-      , chainPosition = position
-      }
-
-    collect :: Monad m => Int -> Consumer a m [a]
-    collect size = lowerCodensity $
-      replicateM size (lift Pipes.await)
+chain n radial position target =
+  chain' n radial position target Nothing
 
 -- | Trace 'n' iterations of a Markov chain and stream them to stdout.
 --
@@ -133,7 +146,7 @@ mcmc
   -> Gen (PrimState m)
   -> m ()
 mcmc n radial chainPosition target gen = runEffect $
-        drive radial Chain {..} gen
+        drive radial Nothing Chain {..} gen
     >-> Pipes.take n
     >-> Pipes.mapM_ (liftIO . print)
   where
