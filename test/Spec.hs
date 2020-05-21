@@ -56,8 +56,8 @@ testParams = Params {
   , pthin    = 1000
   }
 
-getChainResults :: IO [Double]
-getChainResults = do
+vanillaTrace :: IO [Double]
+vanillaTrace = do
   let Params {..} = testParams
 
   boxed <- withSystemRandom . asGenIO $
@@ -66,8 +66,8 @@ getChainResults = do
   let positions = fmap (runIdentity . chainPosition) boxed
   pure (thin pthin positions)
 
-getTunableResults :: IO [Double]
-getTunableResults = do
+tunedTrace :: IO [Double]
+tunedTrace = do
   let Params {..} = testParams
 
   boxed <- withSystemRandom . asGenIO $
@@ -138,8 +138,8 @@ testTunables ts = describe "sampled tunables over exp(1)" $ do
 
 main :: IO ()
 main = do
-  xs <- getChainResults
-  ts <- getTunableResults
+  xs <- vanillaTrace
+  ts <- tunedTrace
 
   hspec $ do
     testHelperFunctions
