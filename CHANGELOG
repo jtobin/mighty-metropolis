@@ -1,7 +1,9 @@
 # Changelog
 
-- 1.3.0 (2020-05-21)
-    * Add 'chain'' function that supports use of 'chainTunables'.
+- 2.0.0 (2020-05-21)
+    * Adds an explicit 'tunables' argument to the 'metropolis' transition
+      operator.
+    * Adds a 'chain'' function that can make use of 'chainTunables'.
 
 - 1.2.0 (2016-12-22)
     * Add 'chain' function for working with chains in memory.
