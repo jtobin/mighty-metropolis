@@ -67,7 +67,7 @@ Test-suite bnn
     -rtsopts
   build-depends:
       base              >= 4 && < 6
-    , containers        >= 0.5 && < 0.6
+    , containers        >= 0.5 && < 0.7
     , mighty-metropolis
     , mwc-probability   >= 1.0.1
 
@@ -80,7 +80,7 @@ Test-suite tests
     -rtsopts
   build-depends:
       base              >= 4 && < 6
-    , containers        >= 0.5 && < 0.6
+    , containers        >= 0.5 && < 0.7
     , mighty-metropolis
     , mwc-probability   >= 1.0.1
     , hspec
