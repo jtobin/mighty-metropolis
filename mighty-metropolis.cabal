@@ -73,7 +73,7 @@ Test-suite bnn
 
 Test-suite tests
   type:                exitcode-stdio-1.0
-  hs-source-dirs:      test/test
+  hs-source-dirs:      test
   main-is:             Spec.hs
   default-language:    Haskell2010
   ghc-options:

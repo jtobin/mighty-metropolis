@@ -109,6 +109,7 @@ testHelperFunctions :: SpecWith ()
 testHelperFunctions = describe "helper functions" $ do
   testWithinPercent
   testMean
+  testVariance
   testStdErr
 
 testSamples :: [Double] -> SpecWith ()
