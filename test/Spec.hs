@@ -117,21 +117,23 @@ testSamples xs = describe "sampled trace over exp(1)" $ do
   let meanStdErr = stdErr xs
       varStdErr  = stdErr (fmap (\x -> pred x ** 2.0) xs)
 
-  it "has the expected mean" $ do
-    mean xs `shouldSatisfy` (< 1 + 2 * meanStdErr)
-    mean xs `shouldSatisfy` (> 1 - 2 * meanStdErr)
+  context "within three standard errors" $ do
+    it "has the expected mean" $ do
+      mean xs `shouldSatisfy` (< 1 + 3 * meanStdErr)
+      mean xs `shouldSatisfy` (> 1 - 3 * meanStdErr)
 
-  it "has the expected variance" $ do
-    variance xs `shouldSatisfy` (< 1 + 2 * varStdErr)
-    variance xs `shouldSatisfy` (> 1 - 2 * varStdErr)
+    it "has the expected variance" $ do
+      variance xs `shouldSatisfy` (< 1 + 3 * varStdErr)
+      variance xs `shouldSatisfy` (> 1 - 3 * varStdErr)
 
 testTunables :: [Double] -> SpecWith ()
 testTunables ts = describe "sampled tunables over exp(1)" $ do
   let meanStdErr = stdErr ts
 
-  it "has the expected third moment (i.e. 6)" $ do
-    mean ts `shouldSatisfy` (< 6 + 2 * meanStdErr)
-    mean ts `shouldSatisfy` (> 6 - 2 * meanStdErr)
+  context "within three standard errors" $
+    it "has the expected third moment" $ do
+      mean ts `shouldSatisfy` (< 6 + 3 * meanStdErr)
+      mean ts `shouldSatisfy` (> 6 - 3 * meanStdErr)
 
 main :: IO ()
 main = do
