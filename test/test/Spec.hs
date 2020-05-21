@@ -1,111 +1,143 @@
-import Test.Hspec
+{-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE RecordWildCards #-}
+
+import Data.Functor.Identity
+import Data.Maybe (mapMaybe)
 import Data.Sampling.Types
-import Data.Maybe (fromJust)
-import Numeric.MCMC.Metropolis (chain,chain')
+import Numeric.MCMC.Metropolis (chain, chain')
 import System.Random.MWC
+import Test.Hspec
 
 withinPercent :: Double -> Double -> Double -> Bool
-withinPercent a 0 _ = a == 0
-withinPercent a b n = d / b < (n / 100)
+withinPercent b n a
+    | b == 0    = a == 0
+    | otherwise = d / b < n / 100
   where
     d = abs (a - b)
 
 mean :: [Double] -> Double
-mean xs = sum xs / n
-  where
-    n = fromIntegral (length xs)
+mean xs = sum xs / n where
+  n = fromIntegral (length xs)
 
 variance :: [Double] -> Double
-variance xs = sum [(x - m) ** 2.0 | x <- xs] / (n - 1)
-  where
-    m = mean xs
-    n = fromIntegral (length xs)
+variance xs = sum [(x - m) ** 2.0 | x <- xs] / (n - 1) where
+  m = mean xs
+  n = fromIntegral (length xs)
 
 stdDev :: [Double] -> Double
 stdDev = sqrt . variance
 
 stdErr :: [Double] -> Double
-stdErr xs = stdDev xs / sqrt n
-  where
-    n = fromIntegral (length xs)
-
-
-testHelperFunctions :: SpecWith ()
-testHelperFunctions = describe "Testing helper functions" $ do
-  it "test withinPercent works" $ do
-    withinPercent 106 100 5 `shouldBe` False
-    withinPercent 105 100 5 `shouldBe` False
-    withinPercent 104 100 5 `shouldBe` True
-    withinPercent 96 100 5 `shouldBe` True
-    withinPercent 95 100 5 `shouldBe` False
-    withinPercent 94 100 5 `shouldBe` False
-  it "test mean works" $ do
-    withinPercent (mean [1,2,3]) 2 1e-3 `shouldBe` True
-    withinPercent (mean [1..100]) 50.5 1e-3 `shouldBe` True
-    withinPercent (mean [1..1000000]) 500000.5 1e-3 `shouldBe` True
-  it "test variance works" $ do
-    withinPercent (variance [0,1]) 0.5 1e-3 `shouldBe` True
-    withinPercent (variance [1,1,1]) 0 1e-3 `shouldBe` True
-    withinPercent (variance [1..100]) 841.66666666 1e-3 `shouldBe` True
-  it "test stdErr works" $ do
-    withinPercent (stdErr [1..100]) 2.901149 1e-3 `shouldBe` True
-    withinPercent (stdErr [1..1000]) 9.133273 1e-3 `shouldBe` True
+stdErr xs = stdDev xs / sqrt n where
+  n = fromIntegral (length xs)
 
 thin :: Int -> [a] -> [a]
-thin _ [] = []
-thin n (x:xs) = x : thin n (drop (n - 1) xs)
+thin n xs = case xs of
+  (h:t) -> h : thin n (drop (pred n) t)
+  _     -> mempty
+
+data Params = Params {
+    pepochs  :: Int
+  , pradial  :: Double
+  , porigin  :: Identity Double
+  , ptunable :: Maybe (Identity Double -> Double)
+  , pltarget :: Identity Double -> Double
+  , pthin    :: Int
+  }
+
+testParams :: Params
+testParams = Params {
+    pepochs  = 1000000
+  , pradial  = 0.2
+  , porigin  = Identity 1.0
+  , ptunable = Just (\(Identity x) -> x ** 3.0)
+  , pltarget = \(Identity x) -> if x > 0 then negate x else negate 1 / 0
+  , pthin    = 1000
+  }
 
 getChainResults :: IO [Double]
-getChainResults =
-  let numIters = 1000000
-      radialSize = 0.2
-      x0 = [1.0]
-      lnObj [x] =
-        if x > 0
-          then -x
-          else -1 / 0
-      thinning = 1000
-   in do boxedXs <-
-           withSystemRandom . asGenIO $ chain numIters radialSize x0 lnObj
-         return $ thin thinning $ head . chainPosition <$> boxedXs
+getChainResults = do
+  let Params {..} = testParams
 
-testChainResults :: [Double] -> SpecWith ()
-testChainResults xs =
-  describe "Testing samples from exponential distribution with rate 1" $ do
-    it "test mean is estimated correctly" $ do
-      mean xs < 1 + 2 * stdErr xs `shouldBe` True
-      mean xs > 1 - 2 * stdErr xs `shouldBe` True
-    it "test variance is estimated correctly" $ do
-      variance xs < 1 + 2 * stdErr [(x - 1) ** 2.0 | x <- xs] `shouldBe` True
-      variance xs > 1 - 2 * stdErr [(x - 1) ** 2.0 | x <- xs] `shouldBe` True
+  boxed <- withSystemRandom . asGenIO $
+    chain pepochs pradial porigin pltarget
+
+  let positions = fmap (runIdentity . chainPosition) boxed
+  pure (thin pthin positions)
 
 getTunableResults :: IO [Double]
-getTunableResults =
-  let numIters = 1000000
-      radialSize = 0.2
-      x0 = [1.0]
-      lnObj [x] =
-        if x > 0
-          then -x
-          else -1 / 0
-      tunable [x] = x ** 3.0
-      thinning = 1000
-   in do boxedXs <-
-           withSystemRandom . asGenIO $ chain' numIters radialSize x0 lnObj (Just tunable)
-         return $ thin thinning $ fromJust . chainTunables <$> boxedXs
+getTunableResults = do
+  let Params {..} = testParams
 
-testTunableResults :: [Double] -> SpecWith ()
-testTunableResults ts =
-  describe "Testing third moment of exponential distribution with rate 1" $ do
-    it "test third moment (which is 6) is estimated correctly" $ do
-      mean ts < 6 + 2 * stdErr ts `shouldBe` True
-      mean ts > 6 - 2 * stdErr ts `shouldBe` True
+  boxed <- withSystemRandom . asGenIO $
+    chain' pepochs pradial porigin pltarget ptunable
+
+  let positions = mapMaybe chainTunables boxed
+  pure (thin pthin positions)
+
+testWithinPercent :: SpecWith ()
+testWithinPercent = describe "withinPercent" $
+  it "works as expected" $ do
+    106 `shouldNotSatisfy` withinPercent 100 5
+    105 `shouldNotSatisfy` withinPercent 100 5
+    104 `shouldSatisfy`    withinPercent 100 5
+    96  `shouldSatisfy`    withinPercent 100 5
+    95  `shouldNotSatisfy` withinPercent 100 5
+    94  `shouldNotSatisfy` withinPercent 100 5
+
+testMean :: SpecWith ()
+testMean = describe "mean" $
+  it "works as expected" $ do
+    mean [1, 2, 3]    `shouldSatisfy` withinPercent 2 1e-3
+    mean [1..100]     `shouldSatisfy` withinPercent 50.5 1e-3
+    mean [1..1000000] `shouldSatisfy` withinPercent 500000.5 1e-3
+
+testVariance :: SpecWith ()
+testVariance = describe "variance" $
+  it "works as expected" $ do
+    variance [0, 1]    `shouldSatisfy` withinPercent 0.5 1e-3
+    variance [1, 1, 1] `shouldSatisfy` withinPercent 0 1e-3
+    variance [1..100]  `shouldSatisfy` withinPercent 841.66666666 1e-3
+
+testStdErr :: SpecWith ()
+testStdErr = describe "stdErr" $
+  it "works as expected" $ do
+    stdErr [1..100]  `shouldSatisfy` withinPercent 2.901149 1e-3
+    stdErr [1..1000] `shouldSatisfy` withinPercent 9.133273 1e-3
+
+testHelperFunctions :: SpecWith ()
+testHelperFunctions = describe "helper functions" $ do
+  testWithinPercent
+  testMean
+  testStdErr
+
+testSamples :: [Double] -> SpecWith ()
+testSamples xs = describe "sampled trace over exp(1)" $ do
+  let meanStdErr = stdErr xs
+      varStdErr  = stdErr (fmap (\x -> pred x ** 2.0) xs)
+
+  it "has the expected mean" $ do
+    mean xs `shouldSatisfy` (< 1 + 2 * meanStdErr)
+    mean xs `shouldSatisfy` (> 1 - 2 * meanStdErr)
+
+  it "has the expected variance" $ do
+    variance xs `shouldSatisfy` (< 1 + 2 * varStdErr)
+    variance xs `shouldSatisfy` (> 1 - 2 * varStdErr)
+
+testTunables :: [Double] -> SpecWith ()
+testTunables ts = describe "sampled tunables over exp(1)" $ do
+  let meanStdErr = stdErr ts
+
+  it "has the expected third moment (i.e. 6)" $ do
+    mean ts `shouldSatisfy` (< 6 + 2 * meanStdErr)
+    mean ts `shouldSatisfy` (> 6 - 2 * meanStdErr)
 
 main :: IO ()
 main = do
   xs <- getChainResults
   ts <- getTunableResults
+
   hspec $ do
     testHelperFunctions
-    testChainResults xs
-    testTunableResults ts
+    testSamples xs
+    testTunables ts
