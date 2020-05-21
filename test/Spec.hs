@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE RecordWildCards #-}
 
+import qualified Control.Foldl as L
 import Data.Functor.Identity
 import Data.Maybe (mapMaybe)
 import Data.Sampling.Types
@@ -16,13 +17,13 @@ withinPercent b n a
     d = abs (a - b)
 
 mean :: [Double] -> Double
-mean xs = sum xs / n where
-  n = fromIntegral (length xs)
+mean = L.fold L.mean
 
 variance :: [Double] -> Double
-variance xs = sum [(x - m) ** 2.0 | x <- xs] / (n - 1) where
-  m = mean xs
-  n = fromIntegral (length xs)
+variance xs = L.fold alg xs where
+  alg = (/) <$> L.premap csq L.sum <*> L.genericLength - 1
+  csq = (** 2.0) . subtract m
+  m   = mean xs
 
 stdDev :: [Double] -> Double
 stdDev = sqrt . variance
